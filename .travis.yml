@@ -18,8 +18,6 @@ services:
 
 before_install:
   - docker pull pmem/pmemkv:ubuntu-18.04
-  - docker run pmem/pmemkv:ubuntu-18.04 /bin/sh
 
 script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+  - ./docker_build.sh
