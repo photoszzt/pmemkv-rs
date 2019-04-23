@@ -13,30 +13,12 @@ matrix:
 os:
   - linux
 
-install:
-  - sudo apt install autoconf automake cmake libdaxctl-dev doxygen gcc g++ libtool libndctl-dev libnuma-dev rapidjson-dev libtbb-dev
-  - git clone https://github.com/pmem/pmdk
-  - cd pmdk
-  - make -j8
-  - sudo make install
-  - cd ..
-  - git clone https://github.com/pmem/libpmemobj-cpp
-  - cd libpmemobj-cpp
-  - mkdir build
-  - cmake ..
-  - make
-  - sudo make install
-  - cd ../..
-  - git clone https://github.com/memkind/memkind
-  - cd memkind
-  - ./build.sh
-  - sudo make install
-  - cd ..
-  - git clone https://github.com/pmem/pmemkv
-  - cd pmemkv
-  - make
-  - sudo make install
-  - cd ..
+services:
+  docker
+
+before_install:
+  - docker pull pmem/pmemkv
+  - docker run pmem/pmemkv /bin/sh
 
 script:
   - cargo build --verbose --all
