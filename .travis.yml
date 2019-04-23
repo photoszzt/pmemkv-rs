@@ -1,0 +1,43 @@
+language: rust
+cache: cargo
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  allow_failures:
+    - rust: nightly
+
+os:
+  - linux
+
+install:
+  - sudo apt install autoconf automake cmake libdaxctl-dev doxygen gcc g++ libtool libndctl-dev libnuma-dev rapidjson-dev libtbb-dev
+  - git clone https://github.com/pmem/pmdk
+  - cd pmdk
+  - make -j8
+  - sudo make install
+  - cd ..
+  - git clone https://github.com/pmem/libpmemobj-cpp
+  - cd libpmemobj-cpp
+  - mkdir build
+  - cmake ..
+  - make
+  - sudo make install
+  - cd ../..
+  - git clone https://github.com/memkind/memkind
+  - cd memkind
+  - ./build.sh
+  - sudo make install
+  - cd ..
+  - git clone https://github.com/pmem/pmemkv
+  - cd pmemkv
+  - make
+  - sudo make install
+  - cd ..
+
+script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
