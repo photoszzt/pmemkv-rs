@@ -1,0 +1,10 @@
+[package]
+name = "pmemkv-sys"
+version = "0.1.0"
+authors = ["Zhiting Zhu <zhitingz@cs.utexas.edu>"]
+edition = "2018"
+
+[dependencies]
+
+[build-dependencies]
+bindgen="0.49"
