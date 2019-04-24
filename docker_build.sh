@@ -11,6 +11,6 @@ WORKDIR=/pmemkv-rs
 docker run --privileged=true \
     -v $HOST_WORKDIR:$WORKDIR \
     -v /etc/localtime:/etc/localtime \
-    -w / \
+    -w . \
     -it pmem/pmemkv:ubuntu-18.04 \
     ./run_build.sh
