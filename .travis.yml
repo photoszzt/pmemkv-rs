@@ -14,65 +14,8 @@ matrix:
 os:
   - linux
 
-before_install:
-  - sudo apt-get --no-install-recommends install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
-  - git clone https://github.com/pmem/ndctl.git
-  - cd ndctl
-  - git checkout tags/v60.1
-  - ./autogen.sh
-  - ./configure
-  - make
-  - sudo make install
-  - sudo cp ndctl/ndctl.h /usr/include/linux
-  - sudo cp config.h /usr/include
-  - sudo cp -r ccan /usr/include
-  - cd ..
-
 install:
-  - git clone https://github.com/Tencent/rapidjson.git
-  - cd rapidjson
-  - git submodule update --init
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - sudo make install
-  - cd ../..
-  - mkdir tbb
-  - cd tbb
-  - wget https://github.com/01org/tbb/releases/download/2019_U5/tbb2019_20190320oss_lin.tgz
-  - tar -xzf tbb2019_20190320oss_lin.tgz
-  - sudo rm -rf /opt/tbb
-  - sudo mkdir /opt/tbb
-  - sudo mv tbb2019_20190320oss/* /opt/tbb/.
-  - cd ..
-  - git clone https://github.com/pmem/pmdk
-  - cd pmdk
-  - git checkout 695e6eba28c53a69a0ef7bad3cc0f45c21ef3e00
-  - make
-  - sudo make install
-  - cd ..
-  - git clone https://github.com/pmem/libpmemobj-cpp
-  - cd libpmemobj-cpp
-  - git checkout 8d86c76c81167d9e352158ad87f169f554e5d794
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - sudo make install
-  - cd ../..
-  - git clone https://github.com/memkind/memkind
-  - cd memkind
-  - git checkout v1.9.0
-  - ./build.sh
-  - sudo make install
-  - cd ..
-  - git clone https://github.com/pmem/pmemkv
-  - cd pmemkv
-  - make
-  - sudo make install
-  - cd ..
+  - docker pull pmem/pmemkv:ubuntu-18.04
 
 script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+  - ./docker_build.sh
