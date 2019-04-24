@@ -1,0 +1,47 @@
+version: 2
+
+aliases:
+  - &install_common |
+      apt-get update -qq
+      apt-get install -qq autoconf automake cmake libdaxctl-dev doxygen gcc g++ libtool libndctl-dev libnuma-dev rapidjson-dev libtbb-dev
+
+jobs:
+  build_project:
+    docker:
+      - image: circleci/rust:1.34.0-stretch
+    steps:
+      - run: *install_common
+      - run: |
+          git clone https://github.com/pmem/pmdk
+          cd pmdk
+          git checkout 695e6eba28c53a69a0ef7bad3cc0f45c21ef3e00
+          make
+          sudo make install
+          cd ..
+      - run: |
+          git clone https://github.com/pmem/libpmemobj-cpp
+          cd libpmemobj-cpp
+          git checkout 8d86c76c81167d9e352158ad87f169f554e5d794
+          mkdir build
+          cd build
+          cmake ..
+          make
+          sudo make install
+          cd ../..
+      - run: |
+          git clone https://github.com/memkind/memkind
+          cd memkind
+          git checkout v1.9.0
+          ./build.sh
+          sudo make install
+          cd ..
+      - run: |
+          git clone https://github.com/pmem/pmemkv
+          cd pmemkv
+          make
+          sudo make install
+          cd ..
+      - checkout
+      - run: |
+          cargo build --verbose --all
+          cargo test --verbose --all
