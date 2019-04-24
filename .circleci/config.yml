@@ -2,9 +2,9 @@ version: 2
 
 aliases:
   - &install_common |
-      sudo apt-get update -qq
-      sudo apt-get --no-install-recommends install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
-      sudo apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev
+      apt-get update -qq
+      apt-get --no-install-recommends install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
+      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev
 
 jobs:
   build:
@@ -19,17 +19,17 @@ jobs:
           ./autogen.sh
           ./configure
           make
-          sudo make install
-          sudo cp ndctl/ndctl.h /usr/include/linux
-          sudo cp config.h /usr/include
-          sudo cp -r ccan /usr/include
+          make install
+          cp ndctl/ndctl.h /usr/include/linux
+          cp config.h /usr/include
+          cp -r ccan /usr/include
           cd ..
       - run: |
           git clone https://github.com/pmem/pmdk
           cd pmdk
           git checkout 695e6eba28c53a69a0ef7bad3cc0f45c21ef3e00
           make
-          sudo make install
+          make install
           cd ..
       - run: |
           git clone https://github.com/pmem/libpmemobj-cpp
@@ -39,20 +39,20 @@ jobs:
           cd build
           cmake ..
           make
-          sudo make install
+          make install
           cd ../..
       - run: |
           git clone https://github.com/memkind/memkind
           cd memkind
           git checkout v1.9.0
           ./build.sh
-          sudo make install
+          make install
           cd ..
       - run: |
           git clone https://github.com/pmem/pmemkv
           cd pmemkv
           make
-          sudo make install
+          make install
           cd ..
       - run: |
           wget https://raw.githubusercontent.com/rust-lang/rustup.rs/master/rustup-init.sh
