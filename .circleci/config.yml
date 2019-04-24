@@ -3,7 +3,7 @@ version: 2
 aliases:
   - &install_common |
       apt-get update -qq
-      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool ndctl-devel libnuma-dev rapidjson-dev libtbb-dev git
+      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libndctl-dev libnuma-dev rapidjson-dev libtbb-dev git
 
 jobs:
   build:
