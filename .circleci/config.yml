@@ -46,9 +46,8 @@ jobs:
           wget https://raw.githubusercontent.com/rust-lang/rustup.rs/master/rustup-init.sh
           chmod u+x rustup-init.sh
           ./rustup-init.sh -y
-          export PATH=$HOME/.cargo/bin:$PATH
       - run: |
           git clone https://github.com/photoszzt/pmemkv-rs
           cd pmemkv-rs
-          cargo build --verbose --all
-          cargo test --verbose --all
+          $HOME/.cargo/bin/cargo build --verbose --all
+          $HOME/.cargo/bin/cargo test --verbose --all
