@@ -3,8 +3,7 @@ version: 2
 aliases:
   - &install_common |
       apt-get update -qq
-      apt-get --no-install-recommends -qq install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
-      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev git
+      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool ndctl-devel libnuma-dev rapidjson-dev libtbb-dev git
 
 jobs:
   build:
@@ -12,18 +11,6 @@ jobs:
       - image: ubuntu:bionic
     steps:
       - run: *install_common
-      - run: |
-          git clone https://github.com/pmem/ndctl.git
-          cd ndctl
-          git checkout tags/v60.1
-          ./autogen.sh
-          ./configure
-          make
-          make install
-          cp ndctl/ndctl.h /usr/include/linux
-          cp config.h /usr/include
-          cp -r ccan /usr/include
-          cd ..
       - run: |
           git clone https://github.com/pmem/pmdk
           cd pmdk
