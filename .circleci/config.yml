@@ -3,6 +3,7 @@ version: 2
 aliases:
   - &install_common |
       sudo apt-get update -qq
+      sudo apt-get --no-install-recommends install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
       sudo apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev
 
 jobs:
