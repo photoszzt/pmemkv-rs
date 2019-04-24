@@ -6,7 +6,7 @@ aliases:
       apt-get install -qq autoconf automake cmake libdaxctl-dev doxygen gcc g++ libtool libndctl-dev libnuma-dev rapidjson-dev libtbb-dev
 
 jobs:
-  build_project:
+  test:
     docker:
       - image: circleci/rust:1.34.0-stretch
     steps:
