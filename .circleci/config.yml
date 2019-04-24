@@ -4,7 +4,7 @@ aliases:
   - &install_common |
       apt-get update -qq
       apt-get --no-install-recommends -qq install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
-      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev
+      apt-get install -qq autoconf automake cmake doxygen gcc g++ libtool libnuma-dev rapidjson-dev libtbb-dev git
 
 jobs:
   build:
