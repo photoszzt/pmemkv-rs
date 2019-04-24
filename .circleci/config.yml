@@ -1,6 +1,7 @@
 version: 2
 
 aliases:
+  - &docker_image ubuntu:bionic
   - &install_common |
       sudo apt-get update -qq
       sudo apt-get --no-install-recommends install asciidoc xmlto libkmod-dev libudev-dev uuid-dev libjson-c-dev
@@ -54,6 +55,11 @@ jobs:
           make
           sudo make install
           cd ..
+      - run: |
+          wget https://raw.githubusercontent.com/rust-lang/rustup.rs/master/rustup-init.sh
+          chmod u+x rustup-init.sh
+          ./rustup-init.sh -y
+          export PATH=$HOME/.cargo/bin:$PATH
       - checkout
       - run: |
           cargo build --verbose --all
