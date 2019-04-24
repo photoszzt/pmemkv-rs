@@ -13,4 +13,4 @@ docker run --privileged=true \
     -v /etc/localtime:/etc/localtime \
     -w / \
     -it pmem/pmemkv:ubuntu-18.04 \
-    /bin/sh
+    ./run_build.sh
