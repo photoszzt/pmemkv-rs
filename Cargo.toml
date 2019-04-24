@@ -1,4 +1,5 @@
 [workspace]
 members = [
-"pmemkv-sys",
+  "pmemkv-sys",
+  "pmemkv",
 ]
