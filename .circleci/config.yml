@@ -47,7 +47,8 @@ jobs:
           chmod u+x rustup-init.sh
           ./rustup-init.sh -y
           export PATH=$HOME/.cargo/bin:$PATH
-      - checkout
       - run: |
+          git clone https://github.com/photoszzt/pmemkv-rs
+          cd pmemkv-rs
           cargo build --verbose --all
           cargo test --verbose --all
