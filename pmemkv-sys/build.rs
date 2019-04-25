@@ -12,7 +12,7 @@ fn linking_info() {
 
 const WHITELIST_FUNCTION: &'static [&'static str] = &["kvengine_.*"];
 
-const WHITELIST_TYPES: &'static [&'static str] = &["KVEngine"];
+const WHITELIST_TYPES: &'static [&'static str] = &["KVEngine", "KVStatus"];
 
 fn build_pmemkv_bindings() {
     let mut bindings = bindgen::Builder::default()

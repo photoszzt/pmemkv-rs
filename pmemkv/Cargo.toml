@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 pmemkv-sys = { path = "../pmemkv-sys" }
+error-chain = "0.12"
