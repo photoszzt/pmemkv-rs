@@ -1,22 +1,12 @@
 extern crate pmemkv;
 
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_void};
-
-extern "C" fn start_failure_callback(
-    _context: *mut c_void,
-    _engine: *const c_char,
-    _config: *const c_char,
-    msg: *const c_char,
-) {
-    let msg_str = unsafe { CStr::from_ptr(msg).to_string_lossy().into_owned() };
-    eprint!("ERROR: {}\n", msg_str);
+fn start_failure_callback(_engine: String, _config: String, msg: String) {
+    eprint!("ERROR: {}\n", msg);
     ::std::process::exit(1);
 }
 
 fn main() {
-    let mut kv = pmemkv::kvengine::KVEngine::start(
-        ::std::ptr::null_mut(),
+    let mut kv = pmemkv::kvengine::KVEngine::start_string(
         "vsmap".to_string(),
         "{\"path\":\"/mnt/mem/\"}".to_string(),
         Some(start_failure_callback),
@@ -38,7 +28,7 @@ fn main() {
     use pmemkv::errors::ErrorKind;
     match err.kind() {
         ErrorKind::NotFound(k) => assert_eq!(k, "key1"),
-        ErrorKind::Fail => assert!(false, "fail to check the existence"),
-        _ => assert!(false, "should throw not found error"),
+        ErrorKind::Fail => panic!("fail to check the existence"),
+        _ => panic!("should throw not found error"),
     }
 }
