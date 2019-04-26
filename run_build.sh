@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-echo pass | sudo -S apt install libtbb-dev
+echo pass | sudo -S apt update -qq
+echo pass | sudo -S apt install -qq libtbb-dev
 wget https://raw.githubusercontent.com/rust-lang/rustup.rs/master/rustup-init.sh
 chmod u+x rustup-init.sh
 ./rustup-init.sh -y
