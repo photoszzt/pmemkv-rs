@@ -8,6 +8,7 @@ fn main() {
 
 fn linking_info() {
     println!("cargo:rustc-link-lib=pmemkv");
+    println!("cargo:rustc-link-lib=tbb");
 }
 
 const WHITELIST_FUNCTION: &'static [&'static str] = &["kvengine_.*"];

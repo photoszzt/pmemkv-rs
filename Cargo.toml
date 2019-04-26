@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "example",
   "pmemkv-sys",
   "pmemkv",
 ]
