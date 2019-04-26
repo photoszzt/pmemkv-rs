@@ -5,7 +5,7 @@ authors = ["Zhiting Zhu <zhitingz@cs.utexas.edu>"]
 edition = "2018"
 keywords = ["pmdk", "bindings"]
 license = "BSD3"
-repository = "https://github.com/photoszzt/pmemkv-rs/tree/master/pmemkv-sys"
+repository = "https://github.com/photoszzt/pmemkv-rs/tree/master/pmemkv"
 homepage = "https://github.com/photoszzt/pmemkv-rs"
 
 [dependencies]
