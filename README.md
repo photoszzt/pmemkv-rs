@@ -1,4 +1,4 @@
-# pmemkv-rs (WIP)
+# pmemkv-rs
 
 [![Build Status](https://travis-ci.org/photoszzt/pmemkv-rs.svg?branch=master)](https://travis-ci.org/photoszzt/pmemkv-rs)
 
