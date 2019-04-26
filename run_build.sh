@@ -14,6 +14,8 @@ cmake .. -DCMAKE_BUILD_TYPE=Release \
 make
 echo pass | sudo -S cp libpmemkv.so /usr/local/lib/
 echo pass | sudo -S cp ../src/pmemkv.h /usr/local/include/libpmemkv.h
+echo pass | sudo -S cp /opt/tbb/lib/* /usr/local/lib/*
+echo pass | sudo -S cp /opt/tbb/include/* /usr/local/include/*
 cd /pmemkv-rs
 cargo build --verbose --all
 cargo test --verbose --all
