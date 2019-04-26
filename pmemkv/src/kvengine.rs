@@ -23,7 +23,7 @@ extern "C" fn cb_wrapper<F>(closure: *mut c_void, bytes: c_int, v: *const c_char
 where
     F: Fn(c_int, *const c_char),
 {
-    let opt_closure: &mut Fn(c_int, *const c_char) =
+    let opt_closure: &mut Box<Fn(c_int, *const c_char)> =
         unsafe { &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(i32, *const i8)>) };
     opt_closure(bytes, v);
 }
@@ -32,7 +32,7 @@ extern "C" fn cb_string_wrapper<F>(closure: *mut c_void, _b: c_int, v: *const c_
 where
     F: Fn(String),
 {
-    let opt_closure: &mut Fn(String) =
+    let opt_closure: &mut Box<Fn(String)> =
         unsafe { &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(std::string::String)>) };
     let s = unsafe { CStr::from_ptr(v).to_string_lossy().into_owned() };
     opt_closure(s)
@@ -47,7 +47,7 @@ extern "C" fn cb_start_wrapper<F>(
     F: Fn(*const c_char, *const c_char, *const c_char),
     F: 'static,
 {
-    let opt_closure: &mut StartFn = unsafe {
+    let opt_closure: &mut Box<StartFn> = unsafe {
         &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(*const i8, *const i8, *const i8)>)
     };
     opt_closure(engine, config, msg);
@@ -61,7 +61,7 @@ extern "C" fn cb_start_string_wrapper<F>(
 ) where
     F: Fn(String, String, String),
 {
-    let opt_closure: &mut StartStringFn = unsafe {
+    let opt_closure: &mut Box<StartStringFn> = unsafe {
         &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(String, String, String)>)
     };
     let (engine_str, config_str, msg_str) = unsafe {
@@ -83,7 +83,7 @@ extern "C" fn cb_each_wrapper<F>(
 ) where
     F: Fn(c_int, *const c_char, c_int, *const c_char),
 {
-    let opt_closure: &mut Fn(i32, *const i8, i32, *const i8) = unsafe {
+    let opt_closure: &mut Box<EachFn> = unsafe {
         &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(i32, *const i8, i32, *const i8)>)
     };
     opt_closure(kb, k, vb, v);
@@ -98,7 +98,7 @@ extern "C" fn cb_each_string_wrapper<F>(
 ) where
     F: Fn(String, String),
 {
-    let opt_closure: &mut Fn(String, String) = unsafe {
+    let opt_closure: &mut Box<Fn(String, String)> = unsafe {
         &mut *(closure
             as *mut std::boxed::Box<dyn std::ops::Fn(std::string::String, std::string::String)>)
     };
