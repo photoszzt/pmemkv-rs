@@ -1,6 +1,6 @@
 use crate::errors::*;
-use pmemkv_sys::pmemkvapi::KVEngine as KVEngineSys;
-use pmemkv_sys::pmemkvapi::*;
+use pmemkv_sys::KVEngine as KVEngineSys;
+use pmemkv_sys::*;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 
@@ -28,9 +28,7 @@ where
     F: Fn(String),
 {
     let opt_closure: &mut Box<Fn(String)> = unsafe { ::std::mem::transmute(closure) };
-    let s = unsafe {
-        CStr::from_ptr(v).to_string_lossy().into_owned()
-    };
+    let s = unsafe { CStr::from_ptr(v).to_string_lossy().into_owned() };
     opt_closure(s)
 }
 

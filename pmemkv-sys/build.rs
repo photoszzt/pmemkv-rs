@@ -46,7 +46,9 @@ fn build_pmemkv_bindings() {
         .expect("Should generate PMEMKV API bindings OK");
 
     builder
-        .write_to_file("src/pmemkvapi.rs")
+        .write_to_file(
+            ::std::path::PathBuf::from(::std::env::var_os("OUT_DIR").unwrap()).join("bindings.rs"),
+        )
         .expect("Couldn't write pmemkv bindings!");
     let have_working_rustfmt = process::Command::new("rustup")
         .args(&["run", "nightly", "rustfmt", "--version"])
