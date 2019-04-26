@@ -23,8 +23,8 @@ extern "C" fn cb_wrapper<F>(closure: *mut c_void, bytes: c_int, v: *const c_char
 where
     F: Fn(c_int, *const c_char),
 {
-    let opt_closure: &mut Box<Fn(c_int, *const c_char)> =
-        unsafe { &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(i32, *const i8)>) };
+    let opt_closure: &&Fn(c_int, *const c_char) =
+        unsafe { &*(closure as *const &dyn std::ops::Fn(i32, *const i8)) };
     opt_closure(bytes, v);
 }
 
@@ -32,8 +32,7 @@ extern "C" fn cb_string_wrapper<F>(closure: *mut c_void, _b: c_int, v: *const c_
 where
     F: Fn(String),
 {
-    let opt_closure: &mut Box<Fn(String)> =
-        unsafe { &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(std::string::String)>) };
+    let opt_closure: &&Fn(String) = unsafe { &*(closure as *const &dyn std::ops::Fn(String)) };
     let s = unsafe { CStr::from_ptr(v).to_string_lossy().into_owned() };
     opt_closure(s)
 }
@@ -47,8 +46,8 @@ extern "C" fn cb_start_wrapper<F>(
     F: Fn(*const c_char, *const c_char, *const c_char),
     F: 'static,
 {
-    let opt_closure: &mut Box<StartFn> = unsafe {
-        &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(*const i8, *const i8, *const i8)>)
+    let opt_closure: &&StartFn = unsafe {
+        &*(closure as *const &(dyn std::ops::Fn(*const i8, *const i8, *const i8) + 'static))
     };
     opt_closure(engine, config, msg);
 }
@@ -61,8 +60,13 @@ extern "C" fn cb_start_string_wrapper<F>(
 ) where
     F: Fn(String, String, String),
 {
-    let opt_closure: &mut Box<StartStringFn> = unsafe {
-        &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(String, String, String)>)
+    let opt_closure: &&StartStringFn = unsafe {
+        &*(closure
+            as *const &(dyn std::ops::Fn(
+                std::string::String,
+                std::string::String,
+                std::string::String,
+            ) + 'static))
     };
     let (engine_str, config_str, msg_str) = unsafe {
         (
@@ -83,9 +87,8 @@ extern "C" fn cb_each_wrapper<F>(
 ) where
     F: Fn(c_int, *const c_char, c_int, *const c_char),
 {
-    let opt_closure: &mut Box<EachFn> = unsafe {
-        &mut *(closure as *mut std::boxed::Box<dyn std::ops::Fn(i32, *const i8, i32, *const i8)>)
-    };
+    let opt_closure: &&EachFn =
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(i32, *const i8, i32, *const i8))) };
     opt_closure(kb, k, vb, v);
 }
 
@@ -98,10 +101,8 @@ extern "C" fn cb_each_string_wrapper<F>(
 ) where
     F: Fn(String, String),
 {
-    let opt_closure: &mut Box<Fn(String, String)> = unsafe {
-        &mut *(closure
-            as *mut std::boxed::Box<dyn std::ops::Fn(std::string::String, std::string::String)>)
-    };
+    let opt_closure: &&Fn(String, String) =
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(String, String))) };
     let (k_s, v_s) = unsafe {
         (
             CStr::from_ptr(k).to_string_lossy().into_owned(),
@@ -121,9 +122,10 @@ impl KVEngine {
         let config_str = CString::new(config)?;
         let kvengine = match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<StartFn>> = Box::new(Box::new(f));
+                let mut cb: &StartFn = &f;
+                let cb = &mut cb;
                 kvengine_start(
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     engine_str.as_ptr(),
                     config_str.as_ptr(),
                     Some(cb_start_wrapper::<F>),
@@ -154,9 +156,10 @@ impl KVEngine {
         let config_str = CString::new(config)?;
         let kvengine = match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<StartStringFn>> = Box::new(Box::new(f));
+                let mut cb: &StartStringFn = &f;
+                let cb = &mut cb;
                 kvengine_start(
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     engine_str.as_ptr(),
                     config_str.as_ptr(),
                     Some(cb_start_string_wrapper::<F>),
@@ -219,10 +222,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(c_int, *const c_char) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(c_int, *const c_char) = &f;
+                let cb = &mut cb;
                 kvengine_get(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_wrapper::<F>),
@@ -248,10 +252,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String) = &f;
+                let cb = &mut cb;
                 kvengine_get(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_string_wrapper::<F>),
@@ -315,10 +320,11 @@ impl KVEngine {
     {
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<EachFn>> = Box::new(Box::new(f));
+                let mut cb: &EachFn = &f;
+                let cb = &mut cb;
                 kvengine_each(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     Some(cb_each_wrapper::<F>),
                 )
             },
@@ -332,10 +338,11 @@ impl KVEngine {
     {
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String, String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String, String) = &f;
+                let cb = &mut cb;
                 kvengine_each(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     Some(cb_each_string_wrapper::<F>),
                 )
             },
@@ -351,10 +358,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<EachFn>> = Box::new(Box::new(f));
+                let mut cb: &EachFn = &f;
+                let cb = &mut cb;
                 kvengine_each_above(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_each_wrapper::<F>),
@@ -380,10 +388,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String, String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String, String) = &f;
+                let cb = &mut cb;
                 kvengine_each_above(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_each_string_wrapper::<F>),
@@ -410,10 +419,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<EachFn>> = Box::new(Box::new(f));
+                let mut cb: &EachFn = &f;
+                let cb = &mut cb;
                 kvengine_each_below(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_each_wrapper::<F>),
@@ -439,10 +449,11 @@ impl KVEngine {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String, String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String, String) = &f;
+                let cb = &mut cb;
                 kvengine_each_below(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key_str.to_bytes().len() as i32,
                     key_str.as_ptr(),
                     Some(cb_each_string_wrapper::<F>),
@@ -470,10 +481,11 @@ impl KVEngine {
         let key2_str = CString::new(key2)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<EachFn>> = Box::new(Box::new(f));
+                let mut cb: &EachFn = &f;
+                let cb = &mut cb;
                 kvengine_each_between(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key1_str.to_bytes().len() as i32,
                     key1_str.as_ptr(),
                     key2_str.to_bytes().len() as i32,
@@ -509,10 +521,11 @@ impl KVEngine {
         let key2_str = CString::new(key2)?;
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String, String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String, String) = &f;
+                let cb = &mut cb;
                 kvengine_each_between(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     key1_str.to_bytes().len() as i32,
                     key1_str.as_ptr(),
                     key2_str.to_bytes().len() as i32,
@@ -573,8 +586,9 @@ impl KVEngine {
     {
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(c_int, *const c_char) -> ()>> = Box::new(Box::new(f));
-                kvengine_all(self.0, Box::into_raw(cb) as *mut _, Some(cb_wrapper::<F>))
+                let mut cb: &Fn(c_int, *const c_char) = &f;
+                let cb = &mut cb;
+                kvengine_all(self.0, cb as *mut _ as *mut c_void, Some(cb_wrapper::<F>))
             },
             None => unsafe { kvengine_all(self.0, ::std::ptr::null_mut(), None) },
         }
@@ -586,10 +600,11 @@ impl KVEngine {
     {
         match callback {
             Some(f) => unsafe {
-                let cb: Box<Box<Fn(String) -> ()>> = Box::new(Box::new(f));
+                let mut cb: &Fn(String) = &f;
+                let cb = &mut cb;
                 kvengine_all(
                     self.0,
-                    Box::into_raw(cb) as *mut _,
+                    cb as *mut _ as *mut c_void,
                     Some(cb_string_wrapper::<F>),
                 )
             },
@@ -605,10 +620,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(c_int, *const c_char) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let cb = &mut cb;
                     kvengine_all_above(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key_str.to_bytes().len() as i32,
                         key_str.as_ptr(),
                         Some(cb_wrapper::<F>),
@@ -639,10 +655,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(String) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(String) = &f;
+                    let cb = &mut cb;
                     kvengine_all_above(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key_str.to_bytes().len() as i32,
                         key_str.as_ptr(),
                         Some(cb_string_wrapper::<F>),
@@ -673,10 +690,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(c_int, *const c_char) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let cb = &mut cb;
                     kvengine_all_below(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key_str.to_bytes().len() as i32,
                         key_str.as_ptr(),
                         Some(cb_wrapper::<F>),
@@ -707,10 +725,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(String) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(String) = &f;
+                    let cb = &mut cb;
                     kvengine_all_below(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key_str.to_bytes().len() as i32,
                         key_str.as_ptr(),
                         Some(cb_string_wrapper::<F>),
@@ -742,10 +761,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(c_int, *const c_char) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let cb = &mut cb;
                     kvengine_all_between(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key1_str.to_bytes().len() as i32,
                         key1_str.as_ptr(),
                         key2_str.to_bytes().len() as i32,
@@ -786,10 +806,11 @@ impl KVEngine {
         match callback {
             Some(f) => {
                 unsafe {
-                    let cb: Box<Box<Fn(String) -> ()>> = Box::new(Box::new(f));
+                    let mut cb: &Fn(String) = &f;
+                    let cb = &mut cb;
                     kvengine_all_between(
                         self.0,
-                        Box::into_raw(cb) as *mut _,
+                        cb as *mut _ as *mut c_void,
                         key1_str.to_bytes().len() as i32,
                         key1_str.as_ptr(),
                         key2_str.to_bytes().len() as i32,
