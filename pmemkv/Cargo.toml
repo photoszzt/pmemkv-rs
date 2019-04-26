@@ -3,7 +3,14 @@ name = "pmemkv"
 version = "0.1.0-alpha.0"
 authors = ["Zhiting Zhu <zhitingz@cs.utexas.edu>"]
 edition = "2018"
+keywords = ["pmdk", "bindings"]
+license = "BSD3"
+repository = "https://github.com/photoszzt/pmemkv-rs/tree/master/pmemkv-sys"
+homepage = "https://github.com/photoszzt/pmemkv-rs"
 
 [dependencies]
 pmemkv-sys = { path = "../pmemkv-sys", version = "0.1.0-alpha.0" }
 error-chain = "0.12"
+
+[lib]
+name = "pmemkv"
