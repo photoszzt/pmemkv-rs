@@ -15,7 +15,7 @@ make
 echo pass | sudo -S cp libpmemkv.so /usr/local/lib/
 echo pass | sudo -S cp ../src/pmemkv.h /usr/local/include/libpmemkv.h
 echo pass | sudo -S cp -r /opt/tbb/lib/intel64/* /usr/local/lib/
-echo pass | sudo -S cp /opt/tbb/include/* /usr/local/include/
+echo pass | sudo -S cp -r /opt/tbb/include/tbb /usr/local/include/
 cd /pmemkv-rs
 cargo build --verbose --all
 cargo test --verbose --all
