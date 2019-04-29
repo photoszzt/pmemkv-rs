@@ -17,7 +17,7 @@ impl Drop for KVEngine {
 
 type EachFn = Fn(c_int, *const c_char, c_int, *const c_char);
 type StartFn = Fn(*const c_char, *const c_char, *const c_char);
-type StartStringFn = Fn(String, String, String);
+type StartStringFn = Fn(&str, &str, &str);
 
 extern "C" fn cb_wrapper<F>(closure: *mut c_void, bytes: c_int, v: *const c_char)
 where
@@ -30,10 +30,10 @@ where
 
 extern "C" fn cb_string_wrapper<F>(closure: *mut c_void, _b: c_int, v: *const c_char)
 where
-    F: Fn(String),
+    F: Fn(&str),
 {
-    let opt_closure: &&Fn(String) = unsafe { &*(closure as *const &dyn std::ops::Fn(String)) };
-    let s = unsafe { CStr::from_ptr(v).to_string_lossy().into_owned() };
+    let opt_closure: &&Fn(&str) = unsafe { &*(closure as *const &dyn std::ops::Fn(&str)) };
+    let s = unsafe { CStr::from_ptr(v).to_str().unwrap_or_default() };
     opt_closure(s)
 }
 
@@ -58,21 +58,15 @@ extern "C" fn cb_start_string_wrapper<F>(
     config: *const c_char,
     msg: *const c_char,
 ) where
-    F: Fn(String, String, String),
+    F: Fn(&str, &str, &str),
 {
-    let opt_closure: &&StartStringFn = unsafe {
-        &*(closure
-            as *const &(dyn std::ops::Fn(
-                std::string::String,
-                std::string::String,
-                std::string::String,
-            ) + 'static))
-    };
+    let opt_closure: &&StartStringFn =
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(&str, &str, &str) + 'static)) };
     let (engine_str, config_str, msg_str) = unsafe {
         (
-            CStr::from_ptr(engine).to_string_lossy().into_owned(),
-            CStr::from_ptr(config).to_string_lossy().into_owned(),
-            CStr::from_ptr(msg).to_string_lossy().into_owned(),
+            CStr::from_ptr(engine).to_str().unwrap_or_default(),
+            CStr::from_ptr(config).to_str().unwrap_or_default(),
+            CStr::from_ptr(msg).to_str().unwrap_or_default(),
         )
     };
     opt_closure(engine_str, config_str, msg_str);
@@ -99,21 +93,21 @@ extern "C" fn cb_each_string_wrapper<F>(
     _vb: c_int,
     v: *const c_char,
 ) where
-    F: Fn(String, String),
+    F: Fn(&str, &str),
 {
-    let opt_closure: &&Fn(String, String) =
-        unsafe { &*(closure as *const &(dyn std::ops::Fn(String, String))) };
+    let opt_closure: &&Fn(&str, &str) =
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(&str, &str))) };
     let (k_s, v_s) = unsafe {
         (
-            CStr::from_ptr(k).to_string_lossy().into_owned(),
-            CStr::from_ptr(v).to_string_lossy().into_owned(),
+            CStr::from_ptr(k).to_str().unwrap_or_default(),
+            CStr::from_ptr(v).to_str().unwrap_or_default(),
         )
     };
     opt_closure(k_s, v_s)
 }
 
 impl KVEngine {
-    pub fn start<F>(engine: String, config: String, callback: Option<F>) -> Result<KVEngine>
+    pub fn start<F>(engine: &str, config: &str, callback: Option<F>) -> Result<KVEngine>
     where
         F: Fn(*const c_char, *const c_char, *const c_char),
         F: 'static,
@@ -147,9 +141,9 @@ impl KVEngine {
         }
     }
 
-    pub fn start_string<F>(engine: String, config: String, callback: Option<F>) -> Result<KVEngine>
+    pub fn start_string<F>(engine: &str, config: &str, callback: Option<F>) -> Result<KVEngine>
     where
-        F: Fn(String, String, String),
+        F: Fn(&str, &str, &str),
         F: 'static,
     {
         let engine_str = CString::new(engine)?;
@@ -181,8 +175,8 @@ impl KVEngine {
         }
     }
 
-    pub fn put(&mut self, key: String, value: String) -> Result<()> {
-        let key_str = CString::new(key.clone())?;
+    pub fn put(&mut self, key: &str, value: &str) -> Result<()> {
+        let key_str = CString::new(key)?;
         let val_str = CString::new(value)?;
         let res = unsafe {
             kvengine_put(
@@ -198,12 +192,12 @@ impl KVEngine {
         } else if res == -1 {
             Err(ErrorKind::Fail.into())
         } else {
-            Err(ErrorKind::NotFound(key).into())
+            Err(ErrorKind::NotFound(key.to_string()).into())
         }
     }
 
-    pub fn remove(&mut self, key: String) -> Result<()> {
-        let key_str = CString::new(key.clone())?;
+    pub fn remove(&mut self, key: &str) -> Result<()> {
+        let key_str = CString::new(key)?;
         let res =
             unsafe { kvengine_remove(self.0, key_str.to_bytes().len() as i32, key_str.as_ptr()) };
         if res == 1 {
@@ -211,11 +205,11 @@ impl KVEngine {
         } else if res == -1 {
             Err(ErrorKind::Fail.into())
         } else {
-            Err(ErrorKind::NotFound(key).into())
+            Err(ErrorKind::NotFound(key.to_string()).into())
         }
     }
 
-    pub fn get<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn get<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char),
     {
@@ -245,14 +239,14 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn get_string<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn get_string<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String),
+        F: Fn(&str),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String) = &f;
+                let mut cb: &Fn(&str) = &f;
                 let cb = &mut cb;
                 kvengine_get(
                     self.0,
@@ -275,8 +269,8 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn get_copy(&self, key: String, max_value_bytes: i32) -> Result<String> {
-        let key_str = CString::new(key.clone())?;
+    pub fn get_copy(&self, key: &str, max_value_bytes: i32) -> Result<String> {
+        let key_str = CString::new(key)?;
         let val_vec = Vec::with_capacity(max_value_bytes as usize);
         let res = unsafe {
             kvengine_get_copy(
@@ -296,12 +290,12 @@ impl KVEngine {
         } else if res == -1 {
             Err(ErrorKind::Fail.into())
         } else {
-            Err(ErrorKind::NotFound(key).into())
+            Err(ErrorKind::NotFound(key.to_string()).into())
         }
     }
 
-    pub fn exists(&self, key: String) -> Result<()> {
-        let key_str = CString::new(key.clone())?;
+    pub fn exists(&self, key: &str) -> Result<()> {
+        let key_str = CString::new(key)?;
         let res =
             unsafe { kvengine_exists(self.0, key_str.to_bytes().len() as i32, key_str.as_ptr()) };
         if res == 1 {
@@ -309,7 +303,7 @@ impl KVEngine {
         } else if res == -1 {
             Err(ErrorKind::Fail.into())
         } else {
-            Err(ErrorKind::NotFound(key).into())
+            Err(ErrorKind::NotFound(key.to_string()).into())
         }
     }
 
@@ -334,11 +328,11 @@ impl KVEngine {
 
     pub fn each_string<F>(&self, callback: Option<F>)
     where
-        F: Fn(String, String),
+        F: Fn(&str, &str),
     {
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String, String) = &f;
+                let mut cb: &Fn(&str, &str) = &f;
                 let cb = &mut cb;
                 kvengine_each(
                     self.0,
@@ -350,7 +344,7 @@ impl KVEngine {
         }
     }
 
-    pub fn each_above<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn each_above<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char, c_int, *const c_char),
         F: 'static,
@@ -381,14 +375,14 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn each_above_string<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn each_above_string<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String, String),
+        F: Fn(&str, &str),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String, String) = &f;
+                let mut cb: &Fn(&str, &str) = &f;
                 let cb = &mut cb;
                 kvengine_each_above(
                     self.0,
@@ -411,7 +405,7 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn each_below<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn each_below<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char, c_int, *const c_char),
         F: 'static,
@@ -442,14 +436,14 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn each_below_string<F>(&self, key: String, callback: Option<F>) -> Result<()>
+    pub fn each_below_string<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String, String),
+        F: Fn(&str, &str),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String, String) = &f;
+                let mut cb: &Fn(&str, &str) = &f;
                 let cb = &mut cb;
                 kvengine_each_below(
                     self.0,
@@ -472,7 +466,7 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn each_between<F>(&self, key1: String, key2: String, callback: Option<F>) -> Result<()>
+    pub fn each_between<F>(&self, key1: &str, key2: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char, c_int, *const c_char),
         F: 'static,
@@ -508,20 +502,15 @@ impl KVEngine {
         Ok(())
     }
 
-    pub fn each_between_string<F>(
-        &self,
-        key1: String,
-        key2: String,
-        callback: Option<F>,
-    ) -> Result<()>
+    pub fn each_between_string<F>(&self, key1: &str, key2: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String, String),
+        F: Fn(&str, &str),
     {
         let key1_str = CString::new(key1)?;
         let key2_str = CString::new(key2)?;
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String, String) = &f;
+                let mut cb: &Fn(&str, &str) = &f;
                 let cb = &mut cb;
                 kvengine_each_between(
                     self.0,
@@ -552,21 +541,21 @@ impl KVEngine {
         unsafe { kvengine_count(self.0) }
     }
 
-    pub fn count_above(&self, key: String) -> Result<i64> {
+    pub fn count_above(&self, key: &str) -> Result<i64> {
         let key_str = CString::new(key)?;
         Ok(unsafe {
             kvengine_count_above(self.0, key_str.to_bytes().len() as i32, key_str.as_ptr())
         })
     }
 
-    pub fn count_below(&self, key: String) -> Result<i64> {
+    pub fn count_below(&self, key: &str) -> Result<i64> {
         let key_str = CString::new(key)?;
         Ok(unsafe {
             kvengine_count_below(self.0, key_str.to_bytes().len() as i32, key_str.as_ptr())
         })
     }
 
-    pub fn count_between(&self, key1: String, key2: String) -> Result<i64> {
+    pub fn count_between(&self, key1: &str, key2: &str) -> Result<i64> {
         let key1_str = CString::new(key1)?;
         let key2_str = CString::new(key2)?;
         Ok(unsafe {
@@ -596,11 +585,11 @@ impl KVEngine {
 
     pub fn all_string<F>(&mut self, callback: Option<F>)
     where
-        F: Fn(String),
+        F: Fn(&str),
     {
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(String) = &f;
+                let mut cb: &Fn(&str) = &f;
                 let cb = &mut cb;
                 kvengine_all(
                     self.0,
@@ -612,7 +601,7 @@ impl KVEngine {
         }
     }
 
-    pub fn all_above<F>(&mut self, key: String, callback: Option<F>) -> Result<()>
+    pub fn all_above<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char),
     {
@@ -647,15 +636,15 @@ impl KVEngine {
         }
     }
 
-    pub fn all_above_string<F>(&mut self, key: String, callback: Option<F>) -> Result<()>
+    pub fn all_above_string<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String),
+        F: Fn(&str),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(String) = &f;
+                    let mut cb: &Fn(&str) = &f;
                     let cb = &mut cb;
                     kvengine_all_above(
                         self.0,
@@ -682,7 +671,7 @@ impl KVEngine {
         }
     }
 
-    pub fn all_below<F>(&mut self, key: String, callback: Option<F>) -> Result<()>
+    pub fn all_below<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char),
     {
@@ -717,15 +706,15 @@ impl KVEngine {
         }
     }
 
-    pub fn all_below_string<F>(&mut self, key: String, callback: Option<F>) -> Result<()>
+    pub fn all_below_string<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(String),
+        F: Fn(&str),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(String) = &f;
+                    let mut cb: &Fn(&str) = &f;
                     let cb = &mut cb;
                     kvengine_all_below(
                         self.0,
@@ -752,7 +741,7 @@ impl KVEngine {
         }
     }
 
-    pub fn all_between<F>(&mut self, key1: String, key2: String, callback: Option<F>) -> Result<()>
+    pub fn all_between<F>(&mut self, key1: &str, key2: &str, callback: Option<F>) -> Result<()>
     where
         F: Fn(c_int, *const c_char),
     {
@@ -794,19 +783,19 @@ impl KVEngine {
 
     pub fn all_between_string<F>(
         &mut self,
-        key1: String,
-        key2: String,
+        key1: &str,
+        key2: &str,
         callback: Option<F>,
     ) -> Result<()>
     where
-        F: Fn(String),
+        F: Fn(&str),
     {
         let key1_str = CString::new(key1)?;
         let key2_str = CString::new(key2)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(String) = &f;
+                    let mut cb: &Fn(&str) = &f;
                     let cb = &mut cb;
                     kvengine_all_between(
                         self.0,

@@ -1,28 +1,28 @@
 extern crate pmemkv;
 
-fn start_failure_callback(_engine: String, _config: String, msg: String) {
+fn start_failure_callback(_engine: &str, _config: &str, msg: &str) {
     eprint!("ERROR: {}\n", msg);
     ::std::process::exit(1);
 }
 
 fn main() {
     let mut kv = pmemkv::kvengine::KVEngine::start_string(
-        "vsmap".to_string(),
-        "{\"path\":\"/mnt/mem/\"}".to_string(),
+        "vsmap",
+        "{\"path\":\"/mnt/mem/\"}",
         Some(start_failure_callback),
     )
     .unwrap();
-    let res = kv.put("key1".to_string(), "value1".to_string());
+    let res = kv.put("key1", "value1");
     assert!(res.is_ok() && kv.count() == 1);
-    kv.put("key2".to_string(), "value2".to_string()).unwrap();
-    kv.put("key3".to_string(), "value3".to_string()).unwrap();
+    kv.put("key2", "value2").unwrap();
+    kv.put("key3", "value3").unwrap();
     assert!(kv.count() == 3);
-    let s = kv.get_copy("key2".to_string(), 10).unwrap();
+    let s = kv.get_copy("key2", 10).unwrap();
     assert!(s == "value2");
-    kv.all_string(Some(|s| println!("{}", s)));
-    let res = kv.remove("key1".to_string());
+    kv.all_string(Some(|s: &str| println!("{}", s)));
+    let res = kv.remove("key1");
     assert!(res.is_ok());
-    let res = kv.exists("key1".to_string());
+    let res = kv.exists("key1");
     assert!(res.is_err());
     let err = res.unwrap_err();
     use pmemkv::errors::ErrorKind;
