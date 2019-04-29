@@ -3,6 +3,7 @@ use pmemkv_sys::KVEngine as KVEngineSys;
 use pmemkv_sys::*;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
+use std::slice;
 
 #[derive(Debug, Clone)]
 pub struct KVEngine(*mut KVEngineSys);
@@ -15,17 +16,18 @@ impl Drop for KVEngine {
     }
 }
 
-type EachFn = Fn(c_int, *const c_char, c_int, *const c_char);
+type EachFn = Fn(&[c_char], &[c_char]);
 type StartFn = Fn(*const c_char, *const c_char, *const c_char);
 type StartStringFn = Fn(&str, &str, &str);
 
 extern "C" fn cb_wrapper<F>(closure: *mut c_void, bytes: c_int, v: *const c_char)
 where
-    F: Fn(c_int, *const c_char),
+    F: Fn(&[c_char]),
 {
-    let opt_closure: &&Fn(c_int, *const c_char) =
-        unsafe { &*(closure as *const &dyn std::ops::Fn(i32, *const i8)) };
-    opt_closure(bytes, v);
+    let opt_closure: &&Fn(&[c_char]) =
+        unsafe { &*(closure as *const &dyn std::ops::Fn(&[c_char])) };
+    let slice = unsafe { slice::from_raw_parts(v, bytes as usize) };
+    opt_closure(slice);
 }
 
 extern "C" fn cb_string_wrapper<F>(closure: *mut c_void, _b: c_int, v: *const c_char)
@@ -44,11 +46,9 @@ extern "C" fn cb_start_wrapper<F>(
     msg: *const c_char,
 ) where
     F: Fn(*const c_char, *const c_char, *const c_char),
-    F: 'static,
 {
-    let opt_closure: &&StartFn = unsafe {
-        &*(closure as *const &(dyn std::ops::Fn(*const i8, *const i8, *const i8) + 'static))
-    };
+    let opt_closure: &&StartFn =
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(*const i8, *const i8, *const i8))) };
     opt_closure(engine, config, msg);
 }
 
@@ -79,11 +79,17 @@ extern "C" fn cb_each_wrapper<F>(
     vb: c_int,
     v: *const c_char,
 ) where
-    F: Fn(c_int, *const c_char, c_int, *const c_char),
+    F: Fn(&[c_char], &[c_char]),
 {
     let opt_closure: &&EachFn =
-        unsafe { &*(closure as *const &(dyn std::ops::Fn(i32, *const i8, i32, *const i8))) };
-    opt_closure(kb, k, vb, v);
+        unsafe { &*(closure as *const &(dyn std::ops::Fn(&[c_char], &[c_char]))) };
+    let (ks, vs) = unsafe {
+        (
+            slice::from_raw_parts(k, kb as usize),
+            slice::from_raw_parts(v, vb as usize),
+        )
+    };
+    opt_closure(ks, vs);
 }
 
 extern "C" fn cb_each_string_wrapper<F>(
@@ -211,12 +217,12 @@ impl KVEngine {
 
     pub fn get<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char),
+        F: Fn(&[c_char]),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(c_int, *const c_char) = &f;
+                let mut cb: &Fn(&[c_char]) = &f;
                 let cb = &mut cb;
                 kvengine_get(
                     self.0,
@@ -309,7 +315,7 @@ impl KVEngine {
 
     pub fn each<F>(&self, callback: Option<F>)
     where
-        F: Fn(c_int, *const c_char, c_int, *const c_char),
+        F: Fn(&[c_char], &[c_char]),
         F: 'static,
     {
         match callback {
@@ -346,7 +352,7 @@ impl KVEngine {
 
     pub fn each_above<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char, c_int, *const c_char),
+        F: Fn(&[c_char], &[c_char]),
         F: 'static,
     {
         let key_str = CString::new(key)?;
@@ -407,7 +413,7 @@ impl KVEngine {
 
     pub fn each_below<F>(&self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char, c_int, *const c_char),
+        F: Fn(&[c_char], &[c_char]),
         F: 'static,
     {
         let key_str = CString::new(key)?;
@@ -468,7 +474,7 @@ impl KVEngine {
 
     pub fn each_between<F>(&self, key1: &str, key2: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char, c_int, *const c_char),
+        F: Fn(&[c_char], &[c_char]),
         F: 'static,
     {
         let key1_str = CString::new(key1)?;
@@ -571,11 +577,11 @@ impl KVEngine {
 
     pub fn all<F>(&mut self, callback: Option<F>)
     where
-        F: Fn(c_int, *const c_char),
+        F: Fn(&[c_char]),
     {
         match callback {
             Some(f) => unsafe {
-                let mut cb: &Fn(c_int, *const c_char) = &f;
+                let mut cb: &F = &f;
                 let cb = &mut cb;
                 kvengine_all(self.0, cb as *mut _ as *mut c_void, Some(cb_wrapper::<F>))
             },
@@ -603,13 +609,13 @@ impl KVEngine {
 
     pub fn all_above<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char),
+        F: Fn(&[c_char]),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let mut cb: &Fn(&[c_char]) = &f;
                     let cb = &mut cb;
                     kvengine_all_above(
                         self.0,
@@ -673,13 +679,13 @@ impl KVEngine {
 
     pub fn all_below<F>(&mut self, key: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char),
+        F: Fn(&[c_char]),
     {
         let key_str = CString::new(key)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let mut cb: &Fn(&[c_char]) = &f;
                     let cb = &mut cb;
                     kvengine_all_below(
                         self.0,
@@ -743,14 +749,14 @@ impl KVEngine {
 
     pub fn all_between<F>(&mut self, key1: &str, key2: &str, callback: Option<F>) -> Result<()>
     where
-        F: Fn(c_int, *const c_char),
+        F: Fn(&[c_char]),
     {
         let key1_str = CString::new(key1)?;
         let key2_str = CString::new(key2)?;
         match callback {
             Some(f) => {
                 unsafe {
-                    let mut cb: &Fn(c_int, *const c_char) = &f;
+                    let mut cb: &Fn(&[c_char]) = &f;
                     let cb = &mut cb;
                     kvengine_all_between(
                         self.0,
